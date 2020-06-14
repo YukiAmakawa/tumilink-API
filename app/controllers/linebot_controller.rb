@@ -1,8 +1,9 @@
 class LinebotController < ApplicationController
   require 'line/bot'
+
   protect_from_forgery :except => [:callback]
 
-  def client 
+  def client
     @client ||= Line::Bot::Client.new { |config|
       config.channel_secret = ENV["LINE_CHANNEL_SECRET"]
       config.channel_token = ENV["LINE_CHANNEL_TOKEN"]
@@ -13,7 +14,7 @@ class LinebotController < ApplicationController
     body = request.body.read
 
     signature = request.env['HTTP_X_LINE_SIGNATURE']
-    unless client.validates_signature(body, signature)
+    unless client.validate_signature(body, signature)
       head :bad_request
     end
 
@@ -24,38 +25,42 @@ class LinebotController < ApplicationController
       when Line::Bot::Event::Message
         case event.type
         when Line::Bot::Event::MessageType::Text
+          # LINEから送られてきたメッセージが「アンケート」と一致するかチェック
           if event.message['text'].eql?('アンケート')
+            # private内のtemplateメソッドを呼び出します。
             client.reply_message(event['replyToken'], template)
           end
         end
       end
-
     }
-    head: ok
+
+    head :ok
   end
 
   private
 
-    def template
-      {
-        "type": "template",
-        "altText": "this is a confirm template",
-        "template": {
+  def template
+    {
+      "type": "template",
+      "altText": "this is a confirm template",
+      "template": {
           "type": "confirm",
-          "text": "きのこの山とたけのこの里、おいしいのはどっち？",
-            "actions": [
+          "text": "今日のもくもく会は楽しいですか？",
+          "actions": [
               {
                 "type": "message",
-                "label": "きのこの山",
-                "text": "きのこの山"
+                # Botから送られてきたメッセージに表示される文字列です。
+                "label": "楽しい",
+                # ボタンを押した時にBotに送られる文字列です。
+                "text": "楽しい"
               },
               {
                 "type": "message",
-                "label": "たけのこの里",
-                "text": "たけのこの里"
+                "label": "楽しくない",
+                "text": "楽しくない"
               }
-            ]
-        }
+          ]
       }
-    end
+    }
+  end
 end
