@@ -12,7 +12,6 @@ class LinebotController < ApplicationController
 
   def callback
     body = request.body.read
-
     signature = request.env['HTTP_X_LINE_SIGNATURE']
     unless client.validate_signature(body, signature)
       head :bad_request
@@ -23,20 +22,7 @@ class LinebotController < ApplicationController
     events.each { |event|
       case event
       when Line::Bot::Event::Message
-        case event.type
-        when Line::Bot::Event::MessageType::Text
-          if URI.regexp.match(event.message['text']) != nil
-            @@url = event.message['text']
-            client.reply_message(event['replyToken'], template)
-          elsif event.message['text'] == "保存する" || "キャンセル"
-              line_id = event['source']["userId"]
-              user = User.find_by(line_id: event['source']["userId"])
-              if user.nil?
-                user = User.create(line_id: line_id)
-              end
-              user.contents.create(url: @@url)
-          end
-        end
+        handle_message_event(event)
       end
     }
 
@@ -45,10 +31,44 @@ class LinebotController < ApplicationController
 
   private
 
-    def template
+    def handle_message_event(event)
+      case event.type
+      when Line::Bot::Event::MessageType::Text
+        handle_text_event(event)
+      end
+    end
+
+    def handle_text_event(event)
+      # urlが投稿された場合
+      if URI.regexp.match(event.message['text']) != nil
+        handle_url_text(event)
+      # urlを保存するかどうかのLINEテンプレートに対する回答
+      elsif event.message['text'] == "保存する" || "キャンセル"
+        handle_template_answer(event)
+      end
+    end
+
+    def handle_url_text(event)
+      @@url = event.message['text']
+      client.reply_message(event['replyToken'], template_save_content)
+    end
+
+    def handle_template_answer(event)
+      return true if event.message['text'] == "キャンセル"
+
+      line_id = event['source']["userId"]
+      user = User.find_by(line_id: event['source']["userId"])
+      if user.nil?
+        user = User.create(line_id: line_id)
+      end
+      user.contents.create(url: @@url)
+      client.reply_message(event['replyToken'], message_after_save_content)
+    end
+
+    def template_save_content
       {
         "type": "template",
-        "altText": "this is a confirm template",
+        "altText": "this is a confirm template",å
         "template": {
             "type": "confirm",
             "text": "この記事を保存しますか？",
@@ -65,6 +85,13 @@ class LinebotController < ApplicationController
                 }
             ]
         }
+      }
+    end
+
+    def message_after_save_content
+      {
+        "type": "text",
+        "text": "記事を保存しました"
       }
     end
 end
