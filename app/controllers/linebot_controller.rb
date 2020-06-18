@@ -12,7 +12,6 @@ class LinebotController < ApplicationController
 
   def callback
     body = request.body.read
-
     signature = request.env['HTTP_X_LINE_SIGNATURE']
     unless client.validate_signature(body, signature)
       head :bad_request
@@ -23,14 +22,7 @@ class LinebotController < ApplicationController
     events.each { |event|
       case event
       when Line::Bot::Event::Message
-        case event.type
-        when Line::Bot::Event::MessageType::Text
-          # LINEから送られてきたメッセージが「アンケート」と一致するかチェック
-          if event.message['text'].eql?('アンケート')
-            # private内のtemplateメソッドを呼び出します。
-            client.reply_message(event['replyToken'], template)
-          end
-        end
+        handle_message_event(event)
       end
     }
 
@@ -39,28 +31,83 @@ class LinebotController < ApplicationController
 
   private
 
-  def template
-    {
-      "type": "template",
-      "altText": "this is a confirm template",
-      "template": {
-          "type": "confirm",
-          "text": "今日のもくもく会は楽しいですか？",
-          "actions": [
-              {
-                "type": "message",
-                # Botから送られてきたメッセージに表示される文字列です。
-                "label": "楽しい",
-                # ボタンを押した時にBotに送られる文字列です。
-                "text": "楽しい"
-              },
-              {
-                "type": "message",
-                "label": "楽しくない",
-                "text": "楽しくない"
-              }
-          ]
+    def handle_message_event(event)
+      case event.type
+      when Line::Bot::Event::MessageType::Text
+        handle_text_event(event)
+      end
+    end
+
+    def handle_text_event(event)
+      # 初期化
+      @@url
+      # urlが投稿された場合
+      if URI.regexp.match(event.message['text']) != nil
+        handle_url_text(event)
+      # urlを保存するかどうかのLINEテンプレートに対する回答
+      elsif event.message['text'] == "保存する" || "キャンセル"
+        handle_template_answer(event)
+      end
+    end
+
+    def handle_url_text(event)
+      @@url = event.message['text']
+      client.reply_message(event['replyToken'], template_save_content)
+    end
+
+    def handle_template_answer(event)
+      client.reply_message(event['replyToken'], message_text_only("先に保存したい記事のURLを教えてね")) if @@url == nil
+      return true if event.message['text'] == "キャンセル"
+
+      line_id = event['source']["userId"]
+
+      user = User.find_by(line_id: line_id)
+      content = Content.find_by(url: @@url)
+
+      if user.nil?
+        user = User.create(line_id: line_id)
+      end
+      if content.nil?
+        content = Content.create(url: @@url)
+      end
+
+      user_content = UserContent.find_by(user_id: user.id, content_id: content.id)
+
+      if user_content != nil
+        client.reply_message(event['replyToken'], message_text_only("この記事はすでに保存されていますよ！"))
+      else
+        UserContent.create(user_id: user.id, content_id: content.id)
+        client.reply_message(event['replyToken'], message_text_only("記事を保存しました"))
+      end
+    end
+
+    def template_save_content
+      {
+        "type": "template",
+        "altText": "this is a confirm template",
+        "template": {
+            "type": "confirm",
+            "text": "この記事を保存しますか？",
+            "actions": [
+                {
+                  "type": "message",
+                  "label": "保存する",
+                  "text": "保存する"
+                },
+                {
+                  "type": "message",
+                  "label": "キャンセル",
+                  "text": "キャンセル"
+                }
+            ]
+        }
       }
-    }
-  end
+    end
+
+    def message_text_only(text)
+      {
+        "type": "text",
+        "text": text
+      }
+    end
 end
