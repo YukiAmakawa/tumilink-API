@@ -1,4 +1,4 @@
 class User < ApplicationRecord
-  has_many :contents, through :user_content
-  has_many :group_user, dependent: :destroy
+  has_many :user_contents, dependent: :destroy
+  has_many :contents, through: :user_contents
 end

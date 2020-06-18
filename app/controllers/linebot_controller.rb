@@ -25,10 +25,16 @@ class LinebotController < ApplicationController
       when Line::Bot::Event::Message
         case event.type
         when Line::Bot::Event::MessageType::Text
-          # LINEから送られてきたメッセージが「アンケート」と一致するかチェック
-          if event.message['text'].eql?('アンケート')
-            # private内のtemplateメソッドを呼び出します。
+          if URI.regexp.match(event.message['text']) != nil
+            @@url = event.message['text']
             client.reply_message(event['replyToken'], template)
+          elsif event.message['text'] == "保存する" || "キャンセル"
+              line_id = event['source']["userId"]
+              user = User.find_by(line_id: event['source']["userId"])
+              if user.nil?
+                user = User.create(line_id: line_id)
+              end
+              user.contents.create(url: @@url)
           end
         end
       end
@@ -39,28 +45,26 @@ class LinebotController < ApplicationController
 
   private
 
-  def template
-    {
-      "type": "template",
-      "altText": "this is a confirm template",
-      "template": {
-          "type": "confirm",
-          "text": "今日のもくもく会は楽しいですか？",
-          "actions": [
-              {
-                "type": "message",
-                # Botから送られてきたメッセージに表示される文字列です。
-                "label": "楽しい",
-                # ボタンを押した時にBotに送られる文字列です。
-                "text": "楽しい"
-              },
-              {
-                "type": "message",
-                "label": "楽しくない",
-                "text": "楽しくない"
-              }
-          ]
+    def template
+      {
+        "type": "template",
+        "altText": "this is a confirm template",
+        "template": {
+            "type": "confirm",
+            "text": "この記事を保存しますか？",
+            "actions": [
+                {
+                  "type": "message",
+                  "label": "保存する",
+                  "text": "保存する"
+                },
+                {
+                  "type": "message",
+                  "label": "キャンセル",
+                  "text": "キャンセル"
+                }
+            ]
+        }
       }
-    }
-  end
+    end
 end
