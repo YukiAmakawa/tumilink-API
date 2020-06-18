@@ -57,12 +57,23 @@ class LinebotController < ApplicationController
       return true if event.message['text'] == "キャンセル"
 
       line_id = event['source']["userId"]
+
       user = User.find_by(line_id: event['source']["userId"])
+      content = Content.find_by(url: @@url)
+
       if user.nil?
         user = User.create(line_id: line_id)
       end
-      user.contents.create(url: @@url)
-      client.reply_message(event['replyToken'], message_after_save_content)
+      if content.nil?
+        content = Content.create(url: @@url)
+      end
+
+      if UserContent.find_by(user_id: user.id, content_id: content.id) != nil
+        client.reply_message(event['replyToken'], message_duplicate_content)
+      else
+        UserContent.create(user_id: user.id, content_id: content.id)
+        client.reply_message(event['replyToken'], message_after_save_content)
+      end
     end
 
     def template_save_content
@@ -85,6 +96,13 @@ class LinebotController < ApplicationController
                 }
             ]
         }
+      }
+    end
+
+    def message_duplicate_content
+      {
+        "type": "text",
+        "text": "この記事はすでに保存されていますよ！"
       }
     end
 
