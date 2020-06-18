@@ -39,6 +39,7 @@ class LinebotController < ApplicationController
     end
 
     def handle_text_event(event)
+      @@url = nil
       # urlが投稿された場合
       if URI.regexp.match(event.message['text']) != nil
         handle_url_text(event)
@@ -54,6 +55,7 @@ class LinebotController < ApplicationController
     end
 
     def handle_template_answer(event)
+      client.reply_message(event['replyToken'], message_text_only("先に保存したい記事のURLを教えてね")) if @@url == nil
       return true if event.message['text'] == "キャンセル"
 
       line_id = event['source']["userId"]
@@ -69,10 +71,10 @@ class LinebotController < ApplicationController
       end
 
       if UserContent.find_by(user_id: user.id, content_id: content.id) != nil
-        client.reply_message(event['replyToken'], message_duplicate_content)
+        client.reply_message(event['replyToken'], message_text_only("この記事はすでに保存されていますよ！"))
       else
         UserContent.create(user_id: user.id, content_id: content.id)
-        client.reply_message(event['replyToken'], message_after_save_content)
+        client.reply_message(event['replyToken'], message_text_only("記事を保存しました"))
       end
     end
 
@@ -99,17 +101,10 @@ class LinebotController < ApplicationController
       }
     end
 
-    def message_duplicate_content
+    def message_text_only(text)
       {
         "type": "text",
-        "text": "この記事はすでに保存されていますよ！"
-      }
-    end
-
-    def message_after_save_content
-      {
-        "type": "text",
-        "text": "記事を保存しました"
+        "text": text
       }
     end
 end
