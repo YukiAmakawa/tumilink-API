@@ -68,7 +68,7 @@ class LinebotController < ApplicationController
     def template_save_content
       {
         "type": "template",
-        "altText": "this is a confirm template",å
+        "altText": "this is a confirm template",
         "template": {
             "type": "confirm",
             "text": "この記事を保存しますか？",
