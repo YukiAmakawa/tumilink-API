@@ -39,7 +39,8 @@ class LinebotController < ApplicationController
     end
 
     def handle_text_event(event)
-      @@url = nil
+      # 初期化
+      @@url
       # urlが投稿された場合
       if URI.regexp.match(event.message['text']) != nil
         handle_url_text(event)
@@ -60,8 +61,9 @@ class LinebotController < ApplicationController
 
       line_id = event['source']["userId"]
 
-      user = User.find_by(line_id: event['source']["userId"])
+      user = User.find_by(line_id: line_id)
       content = Content.find_by(url: @@url)
+      user_content = UserContent.find_by(user_id: user.id, content_id: content.id)
 
       if user.nil?
         user = User.create(line_id: line_id)
@@ -70,7 +72,7 @@ class LinebotController < ApplicationController
         content = Content.create(url: @@url)
       end
 
-      if UserContent.find_by(user_id: user.id, content_id: content.id) != nil
+      if user_content != nil
         client.reply_message(event['replyToken'], message_text_only("この記事はすでに保存されていますよ！"))
       else
         UserContent.create(user_id: user.id, content_id: content.id)
