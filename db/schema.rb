@@ -21,13 +21,13 @@ ActiveRecord::Schema.define(version: 2020_06_14_145843) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "user_content", force: :cascade do |t|
+  create_table "user_contents", force: :cascade do |t|
     t.bigint "user_id"
     t.bigint "content_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["content_id"], name: "index_user_content_on_content_id"
-    t.index ["user_id"], name: "index_user_content_on_user_id"
+    t.index ["content_id"], name: "index_user_contents_on_content_id"
+    t.index ["user_id"], name: "index_user_contents_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -36,6 +36,6 @@ ActiveRecord::Schema.define(version: 2020_06_14_145843) do
     t.datetime "updated_at", null: false
   end
 
-  add_foreign_key "user_content", "contents"
-  add_foreign_key "user_content", "users"
+  add_foreign_key "user_contents", "contents"
+  add_foreign_key "user_contents", "users"
 end
