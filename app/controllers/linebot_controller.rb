@@ -63,7 +63,6 @@ class LinebotController < ApplicationController
 
       user = User.find_by(line_id: line_id)
       content = Content.find_by(url: @@url)
-      user_content = UserContent.find_by(user_id: user.id, content_id: content.id)
 
       if user.nil?
         user = User.create(line_id: line_id)
@@ -71,6 +70,8 @@ class LinebotController < ApplicationController
       if content.nil?
         content = Content.create(url: @@url)
       end
+
+      user_content = UserContent.find_by(user_id: user.id, content_id: content.id)
 
       if user_content != nil
         client.reply_message(event['replyToken'], message_text_only("この記事はすでに保存されていますよ！"))
