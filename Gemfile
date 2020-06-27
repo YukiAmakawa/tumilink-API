@@ -16,6 +16,7 @@ gem 'line-bot-api'
 gem 'dotenv-rails'
 gem 'bootsnap', '>= 1.1.0', require: false
 gem 'rack-cors'
+gem 'jbuilder', '~> 2.5'
 
 group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
